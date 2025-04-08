@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import io
 import tempfile
+from fastapi.responses import JSONResponse
 
 print("🚀 Running main.py") 
 
@@ -15,10 +16,12 @@ app = FastAPI()
 def read_root():
     return {"message": "Hello, this is FastAPI!"}
 
+
+
 @app.get("/prices")
 def read_prices(
     product: Optional[str] = Query(None),
-    group: Optional[str] = Query(None),
+    group: Optional[str] = Query(None),  # now matches 'progroup_text'
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
@@ -28,13 +31,13 @@ def read_prices(
     if product:
         df = df[df['proname'].str.contains(product, na=False)]
     if group:
-        df = df[df['progroup'].str.contains(group, na=False)]
+        df = df[df['progroup_text'].str.contains(group, na=False)]  # changed here
     if start_date:
         df = df[df['date'] >= start_date]
     if end_date:
         df = df[df['date'] <= end_date]
 
-    return ORJSONResponse(content=df.to_dict(orient="records"))
+    return JSONResponse(content=df.to_dict(orient="records"))
 
 @app.get("/export")
 def export_csv(
