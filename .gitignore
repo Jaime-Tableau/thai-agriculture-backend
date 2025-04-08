@@ -1,0 +1,53 @@
+# ──────────────────────────────────────────────
+# 🐍 Python & FastAPI
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+*.sqlite3
+.env
+.env.*
+
+# 🚀 Uvicorn + temporary files
+*.pid
+*.db
+*.tmp
+
+# 📊 Data files
+*.csv
+*.xlsx
+*.xls
+*.parquet
+*.json
+
+# 📓 Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# 🤖 Playwright
+playwright-report/
+test-results/
+*.webm
+*.png
+*.zip
+
+# 🧪 Pytest or test-related cache
+.pytest_cache/
+.tox/
+.nox/
+
+# 🧠 VSCode & PyCharm
+.vscode/
+.idea/
+
+# 📦 Build / Distribution
+build/
+dist/
+*.egg
+*.whl
+
+# 📁 OS and misc
+.DS_Store
+Thumbs.db
+
+# 💡 Optional: Ignore notebooks if you don’t want to version them
+# *.ipynb
