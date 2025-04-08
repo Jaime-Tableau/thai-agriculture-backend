@@ -16,7 +16,7 @@ app = FastAPI()
 # ✅ Enable CORS for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace with your Vercel frontend URL
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,10 +30,12 @@ def read_root():
 def debug_path():
     return {"current_directory": os.getcwd()}
 
-# ✅ Load CSV for dropdowns
-df_dropdowns = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig")
+# ✅ Load CSV for dropdowns and reuse
+csv_path = "agriculture_prices_cleaned.csv"
+df_dropdowns = pd.read_csv(csv_path, encoding="utf-8-sig")
 df_dropdowns['progroup_text'] = df_dropdowns['progroup_text'].astype(str).str.strip()
 df_dropdowns['proname'] = df_dropdowns['proname'].astype(str).str.strip()
+df_dropdowns['date'] = pd.to_datetime(df_dropdowns['date'])
 
 @app.get("/prices")
 def read_prices(
@@ -42,10 +44,8 @@ def read_prices(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
-    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig")
+    df = df_dropdowns.copy()
     df.replace({np.nan: None, np.inf: None, -np.inf: None}, inplace=True)
-    df['progroup_text'] = df['progroup_text'].astype(str).str.strip()
-    df['proname'] = df['proname'].astype(str).str.strip()
 
     if product:
         df = df[df['proname'].str.contains(product.strip(), na=False)]
@@ -53,11 +53,9 @@ def read_prices(
         df = df[df['progroup_text'].str.contains(group.strip(), na=False)]
     try:
         if start_date:
-            datetime.strptime(start_date, "%Y-%m-%d")
-            df = df[df['date'] >= start_date]
+            df = df[df['date'] >= pd.to_datetime(start_date)]
         if end_date:
-            datetime.strptime(end_date, "%Y-%m-%d")
-            df = df[df['date'] <= end_date]
+            df = df[df['date'] <= pd.to_datetime(end_date)]
     except ValueError:
         print("⚠️ Invalid date format. Use YYYY-MM-DD.")
 
@@ -70,21 +68,16 @@ def export_csv(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
-    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig")
-    df['progroup_text'] = df['progroup_text'].astype(str).str.strip()
-    df['proname'] = df['proname'].astype(str).str.strip()
-
+    df = df_dropdowns.copy()
     if product:
         df = df[df['proname'].str.contains(product.strip(), na=False)]
     if group:
         df = df[df['progroup_text'].str.contains(group.strip(), na=False)]
     try:
         if start_date:
-            datetime.strptime(start_date, "%Y-%m-%d")
-            df = df[df['date'] >= start_date]
+            df = df[df['date'] >= pd.to_datetime(start_date)]
         if end_date:
-            datetime.strptime(end_date, "%Y-%m-%d")
-            df = df[df['date'] <= end_date]
+            df = df[df['date'] <= pd.to_datetime(end_date)]
     except ValueError:
         print("⚠️ Invalid date format. Use YYYY-MM-DD.")
 
@@ -103,21 +96,16 @@ def export_excel(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
-    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig")
-    df['progroup_text'] = df['progroup_text'].astype(str).str.strip()
-    df['proname'] = df['proname'].astype(str).str.strip()
-
+    df = df_dropdowns.copy()
     if product:
         df = df[df['proname'].str.contains(product.strip(), na=False)]
     if group:
         df = df[df['progroup_text'].str.contains(group.strip(), na=False)]
     try:
         if start_date:
-            datetime.strptime(start_date, "%Y-%m-%d")
-            df = df[df['date'] >= start_date]
+            df = df[df['date'] >= pd.to_datetime(start_date)]
         if end_date:
-            datetime.strptime(end_date, "%Y-%m-%d")
-            df = df[df['date'] <= end_date]
+            df = df[df['date'] <= pd.to_datetime(end_date)]
     except ValueError:
         print("⚠️ Invalid date format. Use YYYY-MM-DD.")
 
@@ -152,6 +140,31 @@ def get_product_names(group: str = Query(...)):
     filtered = df_dropdowns[df_dropdowns['progroup_text'].str.contains(group, na=False)]
     unique_names = filtered[['proname']].drop_duplicates()
     return [{"value": row.proname, "label": row.proname} for _, row in unique_names.iterrows()]
+
+@app.get("/available-dates")
+def get_available_dates():
+    dates = sorted(df_dropdowns['date'].dt.strftime('%Y-%m-%d').unique().tolist())
+    return {"available_dates": dates}
+
+@app.get("/latest")
+def get_latest_prices():
+    latest_df = df_dropdowns.sort_values(by="date", ascending=False).head(10)
+    return latest_df.to_dict(orient="records")
+
+@app.get("/summary")
+def get_summary():
+    total_records = len(df_dropdowns)
+    unique_products = df_dropdowns['proname'].nunique()
+    min_date = df_dropdowns['date'].min().strftime('%Y-%m-%d')
+    max_date = df_dropdowns['date'].max().strftime('%Y-%m-%d')
+    return {
+        "total_records": total_records,
+        "unique_product_names": unique_products,
+        "date_range": {
+            "start": min_date,
+            "end": max_date
+        }
+    }
 
 @app.get("/healthz")
 def health_check():
