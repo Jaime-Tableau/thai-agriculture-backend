@@ -149,9 +149,10 @@ def get_product_groups(type: str = Query(...)):
 @app.get("/dropdowns/product-names")
 def get_product_names(group: str = Query(...)):
     group = group.strip()
-    filtered = df_dropdowns[df_dropdowns['progroup_text'].str.strip() == group]
+    filtered = df_dropdowns[df_dropdowns['progroup_text'].str.contains(group, na=False)]
     unique_names = filtered[['proname']].drop_duplicates()
     return [{"value": row.proname, "label": row.proname} for _, row in unique_names.iterrows()]
+
 
 print("✅ Routes loaded:")
 for route in app.routes:
