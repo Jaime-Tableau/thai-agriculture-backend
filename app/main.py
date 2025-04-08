@@ -153,6 +153,13 @@ def get_product_names(group: str = Query(...)):
     unique_names = filtered[['proname']].drop_duplicates()
     return [{"value": row.proname, "label": row.proname} for _, row in unique_names.iterrows()]
 
+@app.get("/healthz")
+def health_check():
+    return {
+        "status": "ok",
+        "service": "thai-agriculture-backend",
+        "version": "1.0.0"
+    }
 
 print("✅ Routes loaded:")
 for route in app.routes:
