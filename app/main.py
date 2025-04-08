@@ -1,27 +1,41 @@
 from fastapi import FastAPI, Query
-from fastapi.responses import ORJSONResponse, StreamingResponse, FileResponse
+from fastapi.responses import JSONResponse, StreamingResponse, FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 import pandas as pd
 import numpy as np
 import io
 import tempfile
-from fastapi.responses import JSONResponse
+import os
 
 print("🚀 Running main.py") 
 
 app = FastAPI()
 
+# ✅ Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # replace with specific URL in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 def read_root():
     return {"message": "Hello, this is FastAPI!"}
 
+@app.get("/debug_path")
+def debug_path():
+    return {"current_directory": os.getcwd()}
 
+# ✅ Load once for dropdown use
+df_dropdowns = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig")
 
 @app.get("/prices")
 def read_prices(
     product: Optional[str] = Query(None),
-    group: Optional[str] = Query(None),  # now matches 'progroup_text'
+    group: Optional[str] = Query(None),  # now uses progroup_text
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
@@ -31,7 +45,7 @@ def read_prices(
     if product:
         df = df[df['proname'].str.contains(product, na=False)]
     if group:
-        df = df[df['progroup_text'].str.contains(group, na=False)]  # changed here
+        df = df[df['progroup_text'].str.contains(group, na=False)]
     if start_date:
         df = df[df['date'] >= start_date]
     if end_date:
@@ -52,7 +66,7 @@ def export_csv(
     if product:
         df = df[df['proname'].str.contains(product, na=False)]
     if group:
-        df = df[df['progroup'].str.contains(group, na=False)]
+        df = df[df['progroup_text'].str.contains(group, na=False)]
     if start_date:
         df = df[df['date'] >= start_date]
     if end_date:
@@ -74,15 +88,14 @@ def export_excel(
     end_date: Optional[str] = Query(None),
 ):
     print("📦 Handling /export_excel")
-    print("🔥 /export_excel route triggered")
-    
+
     df = pd.read_csv("agriculture_prices_cleaned.csv", encoding='utf-8-sig')
     df = df.replace({np.nan: None})
 
     if product:
-        df = df[df['proname'].str.contains(product)]
+        df = df[df['proname'].str.contains(product, na=False)]
     if group:
-        df = df[df['progroup'].str.contains(group)]
+        df = df[df['progroup_text'].str.contains(group, na=False)]
     if start_date:
         df = df[df['date'] >= start_date]
     if end_date:
@@ -98,30 +111,6 @@ def export_excel(
         filename="filtered_data.xlsx"
     )
 
-print("✅ Routes loaded:")
-for route in app.routes:
-    print(route.path)
-
-import os
-
-@app.get("/debug_path")
-def debug_path():
-    return {"current_directory": os.getcwd()}
-
-from fastapi.middleware.cors import CORSMiddleware
-
-# ✅ Add CORS so frontend can connect
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Replace with specific origin in production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# ✅ Load cleaned agricultural price data once
-df_dropdowns = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig")
-
 @app.get("/dropdowns/product-types")
 def get_product_types():
     unique_types = df_dropdowns[['protype', 'protype_text']].drop_duplicates()
@@ -130,11 +119,15 @@ def get_product_types():
 @app.get("/dropdowns/product-groups")
 def get_product_groups(type: str = Query(...)):
     filtered = df_dropdowns[df_dropdowns['protype'] == type]
-    unique_groups = filtered[['progroup', 'progroup_text']].drop_duplicates()
-    return [{"value": row.progroup, "label": row.progroup_text} for _, row in unique_groups.iterrows()]
+    unique_groups = filtered[['progroup_text']].drop_duplicates()
+    return [{"value": row.progroup_text, "label": row.progroup_text} for _, row in unique_groups.iterrows()]
 
 @app.get("/dropdowns/product-names")
 def get_product_names(group: str = Query(...)):
-    filtered = df_dropdowns[df_dropdowns['progroup'] == group]
+    filtered = df_dropdowns[df_dropdowns['progroup_text'] == group]
     unique_names = filtered[['proname']].drop_duplicates()
     return [{"value": row.proname, "label": row.proname} for _, row in unique_names.iterrows()]
+
+print("✅ Routes loaded:")
+for route in app.routes:
+    print(route.path)
