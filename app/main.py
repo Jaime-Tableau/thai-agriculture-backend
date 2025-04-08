@@ -44,22 +44,31 @@ def read_prices(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
-    df = df_dropdowns.copy()
+    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig", parse_dates=["date"])
     df.replace({np.nan: None, np.inf: None, -np.inf: None}, inplace=True)
+    df['progroup_text'] = df['progroup_text'].astype(str).str.strip()
+    df['proname'] = df['proname'].astype(str).str.strip()
 
     if product:
         df = df[df['proname'].str.contains(product.strip(), na=False)]
     if group:
         df = df[df['progroup_text'].str.contains(group.strip(), na=False)]
+
     try:
         if start_date:
-            df = df[df['date'] >= pd.to_datetime(start_date)]
+            start = pd.to_datetime(start_date)
+            df = df[df['date'] >= start]
         if end_date:
-            df = df[df['date'] <= pd.to_datetime(end_date)]
+            end = pd.to_datetime(end_date)
+            df = df[df['date'] <= end]
     except ValueError:
         print("⚠️ Invalid date format. Use YYYY-MM-DD.")
 
+    # 🔥 This line fixes the serialization error
+    df['date'] = df['date'].dt.strftime('%Y-%m-%d')
+
     return JSONResponse(content=df.to_dict(orient="records"))
+
 
 @app.get("/export")
 def export_csv(
@@ -148,7 +157,11 @@ def get_available_dates():
 
 @app.get("/latest")
 def get_latest_prices():
-    latest_df = df_dropdowns.sort_values(by="date", ascending=False).head(10)
+    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig", parse_dates=["date"])
+    df['date'] = df['date'].dt.strftime('%Y-%m-%d')  # 💡 Fix JSON serialization
+    df['progroup_text'] = df['progroup_text'].astype(str).str.strip()
+    df['proname'] = df['proname'].astype(str).str.strip()
+    latest_df = df.sort_values(by="date", ascending=False).head(10)
     return latest_df.to_dict(orient="records")
 
 @app.get("/summary")
