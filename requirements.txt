@@ -6,3 +6,4 @@ python-multipart
 aiofiles
 openpyxl
 playwright
+orjson
