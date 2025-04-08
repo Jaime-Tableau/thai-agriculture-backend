@@ -77,11 +77,15 @@ def export_csv(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
-    df = df_dropdowns.copy()
+    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig", parse_dates=["date"])
+    df['progroup_text'] = df['progroup_text'].astype(str).str.strip()
+    df['proname'] = df['proname'].astype(str).str.strip()
+
     if product:
         df = df[df['proname'].str.contains(product.strip(), na=False)]
     if group:
         df = df[df['progroup_text'].str.contains(group.strip(), na=False)]
+
     try:
         if start_date:
             df = df[df['date'] >= pd.to_datetime(start_date)]
@@ -89,6 +93,8 @@ def export_csv(
             df = df[df['date'] <= pd.to_datetime(end_date)]
     except ValueError:
         print("⚠️ Invalid date format. Use YYYY-MM-DD.")
+
+    df['date'] = df['date'].dt.strftime('%Y-%m-%d')  # 🔧 Fix serialization
 
     output = io.StringIO()
     df.to_csv(output, index=False, encoding="utf-8-sig")
@@ -105,11 +111,15 @@ def export_excel(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
-    df = df_dropdowns.copy()
+    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig", parse_dates=["date"])
+    df['progroup_text'] = df['progroup_text'].astype(str).str.strip()
+    df['proname'] = df['proname'].astype(str).str.strip()
+
     if product:
         df = df[df['proname'].str.contains(product.strip(), na=False)]
     if group:
         df = df[df['progroup_text'].str.contains(group.strip(), na=False)]
+
     try:
         if start_date:
             df = df[df['date'] >= pd.to_datetime(start_date)]
@@ -117,6 +127,8 @@ def export_excel(
             df = df[df['date'] <= pd.to_datetime(end_date)]
     except ValueError:
         print("⚠️ Invalid date format. Use YYYY-MM-DD.")
+
+    df['date'] = df['date'].dt.strftime('%Y-%m-%d')  # 🔧 Fix serialization
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
         file_path = tmp.name
@@ -127,6 +139,7 @@ def export_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename="filtered_data.xlsx"
     )
+
 
 @app.get("/dropdowns/product-types")
 def get_product_types():
