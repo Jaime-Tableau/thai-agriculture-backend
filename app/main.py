@@ -15,7 +15,7 @@ app = FastAPI()
 # ✅ Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # replace with specific URL in production
+    allow_origins=["*"],  # Replace with frontend URL for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -29,17 +29,17 @@ def read_root():
 def debug_path():
     return {"current_directory": os.getcwd()}
 
-# ✅ Load once for dropdown use
-df_dropdowns = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig")
+# ✅ Load once for dropdowns
+df_dropdowns = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8")
 
 @app.get("/prices")
 def read_prices(
     product: Optional[str] = Query(None),
-    group: Optional[str] = Query(None),  # now uses progroup_text
+    group: Optional[str] = Query(None),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
-    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig")
+    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8")
     df.replace({np.nan: None, np.inf: None, -np.inf: None}, inplace=True)
 
     if product:
@@ -60,7 +60,7 @@ def export_csv(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
 ):
-    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8-sig")
+    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8")
     df = df.where(pd.notnull(df), None)
 
     if product:
@@ -73,7 +73,7 @@ def export_csv(
         df = df[df['date'] <= end_date]
 
     output = io.StringIO()
-    df.to_csv(output, index=False, encoding="utf-8-sig")
+    df.to_csv(output, index=False, encoding="utf-8")
     output.seek(0)
 
     return StreamingResponse(output, media_type="text/csv", headers={
@@ -89,7 +89,7 @@ def export_excel(
 ):
     print("📦 Handling /export_excel")
 
-    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding='utf-8-sig')
+    df = pd.read_csv("agriculture_prices_cleaned.csv", encoding="utf-8")
     df = df.replace({np.nan: None})
 
     if product:
